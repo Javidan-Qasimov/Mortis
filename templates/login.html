@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mortis</title>
+    <link rel="stylesheet" href="/static/arxa.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<h1>MORTIS</h1>
+
+<!-- incase of an error -->
+
+{% if error %}
+<p class="error-msg">{{ error }}</p>
+{% endif %}
+
+<form action="/login" method="POST" id="login-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+<label>Name</label>
+
+<input
+    type="text"
+    name="username"
+    id="username"
+    required
+    minlength="5"
+    pattern="\S+"
+    title="Must be at least 5 digit">
+
+<br><br>
+
+<label>Password</label>
+
+<input
+    type="password"
+    name="password"
+    id="password"
+    required
+    minlength="8"
+    pattern="\S+"
+    title="Must be at least 8 digit">
+
+<br><br>
+
+<button>Login</button>
+
+</form>
+
+</body>
+</html>

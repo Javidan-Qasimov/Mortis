@@ -1,0 +1,199 @@
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #000;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+}
+
+.not-found {
+    position: relative;
+    display: inline-block;
+    font-family: 'Wallpoet', monospace;
+    font-weight: 400;
+    font-size: clamp(3rem, 10vw, 7rem);
+    color: #7a7a7a;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-shadow:
+        0 0 1px #555,
+        2px 0 0 rgba(120,120,120,0.15);
+    user-select: none;
+    animation: breakdown 3.4s infinite steps(1);
+}
+
+/* --- Glitch layers ---------------------------------------------------
+   Two copies of the same text (via `content: attr(data-text)`, so the
+   markup needs a `data-text="Not Found"` attribute) are stacked on top
+   of the original: one pushed toward light gray, one pushed toward black.
+   No pure white anywhere - only grayscale, capped just short of #fff. Both are torn into a shifting
+   horizontal slice via clip-path and snapped (not smoothly tweened,
+   `steps()` timing) to feel like corrupted/dropped signal instead of a
+   smooth animation. */
+.not-found::before,
+.not-found::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+}
+
+.not-found::before {
+    color: #dcdcdc;
+    text-shadow: -3px 0 #dcdcdc, 0 0 4px #bbb;
+    animation: tear-1 1.7s infinite steps(1);
+}
+
+.not-found::after {
+    color: #000;
+    -webkit-text-stroke: 1px #444;
+    text-shadow: 3px 0 #000;
+    animation: tear-2 2.1s infinite steps(1);
+}
+
+/* Intermittent slice-tearing: the ghost layer sits perfectly still and
+   invisible (opacity: 0) for most of the cycle - roughly a second of
+   calm - then tears itself apart in a quick burst, then goes still
+   again. Two layers run on different, non-matching durations (1.7s vs
+   2.1s below) so their bursts drift in and out of sync instead of always
+   firing together. */
+@keyframes tear-1 {
+    0%, 60%   { clip-path: inset(0 0 0 0); transform: translate(0, 0); opacity: 0; }
+    62%  { clip-path: inset(12% 0 74% 0); transform: translate(-4px, 0); opacity: 0.9; }
+    68%  { clip-path: inset(55% 0 8% 0);  transform: translate(3px, 0);  opacity: 1; }
+    74%  { clip-path: inset(4% 0 88% 0);  transform: translate(-2px, 0); opacity: 0.7; }
+    80%  { clip-path: inset(70% 0 12% 0); transform: translate(4px, 0);  opacity: 1; }
+    86%  { clip-path: inset(28% 0 55% 0); transform: translate(-3px, 0); opacity: 0.85; }
+    92%  { clip-path: inset(2% 0 90% 0);  transform: translate(2px, 0);  opacity: 1; }
+    96%, 100% { clip-path: inset(0 0 0 0); transform: translate(0, 0); opacity: 0; }
+}
+
+@keyframes tear-2 {
+    0%, 68%   { clip-path: inset(0 0 0 0); transform: translate(0, 0); opacity: 0; }
+    70%  { clip-path: inset(60% 0 15% 0); transform: translate(4px, 0);  opacity: 1; }
+    75%  { clip-path: inset(6% 0 80% 0);  transform: translate(-3px, 0); opacity: 0.8; }
+    80%  { clip-path: inset(38% 0 45% 0); transform: translate(3px, 0);  opacity: 1; }
+    85%  { clip-path: inset(82% 0 4% 0);  transform: translate(-4px, 0); opacity: 0.9; }
+    90%  { clip-path: inset(20% 0 65% 0); transform: translate(2px, 0);  opacity: 1; }
+    94%, 100% { clip-path: inset(0 0 0 0); transform: translate(0, 0); opacity: 0; }
+}
+
+/* Periodic full-on breakdown: the base text itself violently skews,
+   flashes to inverted (black-on-white) for an instant, then drops to
+   near-blackout before snapping back - like the whole display just
+   failed for a fraction of a second. `steps(1)` on the parent means
+   every stop below is an instant hard cut, not a smooth tween. */
+@keyframes breakdown {
+    0%, 85%, 100% {
+        transform: translate(0, 0) skew(0deg, 0deg);
+        filter: none;
+        opacity: 1;
+    }
+    86% {
+        transform: translate(-10px, 3px) skew(-8deg, 1deg);
+        filter: contrast(2.2) brightness(1.7);
+        opacity: 0.9;
+    }
+    87% {
+        transform: translate(8px, -4px) skew(6deg, -1deg);
+        filter: invert(1);
+        opacity: 1;
+    }
+    88% {
+        opacity: 0.05;
+        filter: none;
+        transform: translate(0, 0);
+    }
+    89% {
+        transform: translate(-6px, 2px) skew(-4deg, 0deg);
+        filter: contrast(2.5);
+        opacity: 1;
+    }
+    90% {
+        opacity: 0.1;
+    }
+    91% {
+        transform: translate(5px, -2px) skew(3deg, 0deg);
+        filter: invert(1) brightness(1.4);
+        opacity: 1;
+    }
+    92%, 94% {
+        transform: translate(0, 0) skew(0deg, 0deg);
+        filter: none;
+        opacity: 1;
+    }
+    93% {
+        transform: translate(-3px, 0);
+        opacity: 0.4;
+    }
+}
+
+.subtitle {
+    font-family: 'Inter', sans-serif;
+    font-weight: 300;
+    font-size: clamp(0.85rem, 2.5vw, 1.1rem);
+    color: #3d3d3d;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+}
+
+.buttons {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+}
+
+.btn {
+    background: #000;
+    color: #fff;
+    border: 1.5px solid #fff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 12px 44px;
+    cursor: pointer;
+    outline: none;
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        color 0.2s ease;
+}
+
+.btn-yes:hover {
+    border-color: #00cfff;
+    color: #00cfff;
+    box-shadow:
+        0 0 8px #00cfff,
+        0 0 20px #00cfff88,
+        0 0 40px #00cfff44,
+        inset 0 0 8px #00cfff22;
+}
+
+.btn-no:hover {
+    border-color: #ff2244;
+    color: #ff2244;
+    box-shadow:
+        0 0 8px #ff2244,
+        0 0 20px #ff224488,
+        0 0 40px #ff224444,
+        inset 0 0 8px #ff224422;
+}

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<!--
+  home.html - Main inbox / chat screen for the Homis app.
+
+  Rendered by the `home()` view in app.py after a successful login.
+  Responsible for:
+    - the top search bar (find a user to start a chat with)
+    - the inbox list of past conversations (Instagram-DM style)
+    - the chat overlay/modal used for real-time messaging (Socket.IO)
+
+  All interactive behavior lives in /static/scripts/homis.js; this file
+  only provides markup + the server-rendered data it needs (username list,
+  conversation history) via Jinja templating.
+-->
+<html>
+
+<head>
+    <title>Home</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+
+    <!-- Google Fonts: monospace font for chat text, display font for headline -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@600&display=swap" rel="stylesheet">
+
+    <!-- App-specific styles -->
+    <link rel="stylesheet" href="/static/homis.css">
+
+    <!-- Socket.IO client library, required for real-time chat (see homis.js) -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+
+<!--
+  The logged-in user's username is exposed to JS via a data-attribute on
+  <body>, so homis.js can read it (e.g. document.body.dataset.username)
+  without needing an extra API call.
+-->
+<body data-username="{{ username }}">
+
+<div class="app-layout">
+
+    <!-- ============================================================ -->
+    <!-- Sidebar: profile avatar + search + conversation list          -->
+    <!-- ============================================================ -->
+    <div class="sidebar">
+
+        <div class="topbar">
+
+            <!-- Profile avatar: clicking it opens the right-side profile
+                 panel. Rendered/colored client-side in homis.js, same as
+                 every other avatar in the app. -->
+            <div id="profile-avatar" class="profile-avatar"></div>
+
+            <!-- Search capsule: typing here filters the hidden <ul id="list">
+                 below (see homis.js) and renders matches into #results. -->
+            <div class="search-capsule">
+                <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input
+                    type="text"
+                    id="search"
+                    class="search-input"
+                    placeholder="Search user..."
+                    autocomplete="off">
+
+                <!-- Populated dynamically by JS with matching usernames as
+                     the user types; empty/hidden by default. -->
+                <div id="results" class="results-dropdown"></div>
+            </div>
+
+            <form action="/logout" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="logout-btn">Logout</button>
+            </form>
+        </div>
+
+        <!-- Inbox: list of past conversations (Instagram DM style).
+             Starts hidden; homis.js reveals it and renders one row per
+             conversation once #conversations-data (below) has been
+             parsed. Clicking a row opens that chat in the main-chat panel
+             on the right, not as a popup. -->
+        <div id="conversations-list" class="conversations-list" hidden></div>
+
+        <!-- Empty-state headline: shown in place of the list above when
+             the user has no conversations yet (and hidden while a chat is
+             open). Lives in the sidebar - not in .main-chat - because
+             .main-chat is collapsed to zero width until a chat is open,
+             which would make this invisible. -->
+        <div id="center" class="center">
+            <h1 class="headline">
+                Are you looking
+                <span class="line2">for someone??</span>
+            </h1>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- Main chat area (right side, WhatsApp-style)                   -->
+    <!-- ============================================================ -->
+    <div class="main-chat">
+
+        <!-- Active chat, rendered inline inside the main-chat column
+             (not an overlay/popup). Opened by JS when the user clicks a
+             search result or an inbox row; closed via the × button, which
+             returns to the #center empty state. All message
+             send/receive/history wiring happens in homis.js via
+             Socket.IO. -->
+        <div id="chat-panel" class="chat-panel" hidden>
+
+            <!-- Header: shows who you're chatting with + a close button -->
+            <div class="chat-header">
+                <!-- Back arrow, only shown on narrow/mobile widths, to
+                     return to the sidebar's conversation list. -->
+                <button id="chat-back" class="chat-back">‹</button>
+                <div class="chat-header-info">
+                    <div id="chat-header-avatar" class="chat-header-avatar"></div>
+                    <span id="chat-with-name"></span>
+                </div>
+                <button id="chat-close">×</button>
+            </div>
+
+            <!-- Scrollable message thread; populated from the "history"
+                 Socket.IO event and appended to on "receive_message" -->
+            <div id="chat-messages" class="chat-messages"></div>
+
+            <!-- Message composer; Enter key / send button both trigger the
+                 "send_message" Socket.IO event (wired up in homis.js) -->
+            <div class="chat-input-row">
+                <input type="text" id="chat-input" placeholder="Mesaj yaz..." autocomplete="off">
+                <button id="chat-send">Gonder</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================================================ -->
+<!-- Profile panel (slides in from the left)                      -->
+<!-- ============================================================ -->
+<!-- Opened by JS when the user clicks the profile avatar in the
+     topbar. Shows the logged-in user's name and contact info. -->
+<div id="profile-overlay" class="profile-overlay" hidden>
+    <div id="profile-panel" class="profile-panel">
+        <button id="profile-close">×</button>
+
+        <div class="profile-panel-main">
+            <!-- Clicking the big avatar opens the hidden file picker below
+                 so the user can set/replace their profile photo. The
+                 camera-icon badge (see homis.css) hints that it's
+                 clickable. -->
+            <div id="profile-panel-avatar" class="profile-panel-avatar" title="Fotoğrafı değiştirmek için tıkla">
+                <span class="avatar-camera-badge">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                </span>
+            </div>
+            <h2 id="profile-panel-username" class="profile-panel-username"></h2>
+        </div>
+
+        <div class="profile-panel-contact">
+            <span class="contact-label">Contact</span>
+            <span class="contact-email">example@gmail.com</span>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden file input used to pick a profile photo; triggered
+     programmatically by clicking #profile-panel-avatar (see homis.js).
+     Not shown directly to the user - accept="image/*" restricts the
+     native file picker to image files only. -->
+<input type="file" id="avatar-upload" accept="image/*" hidden>
+
+<!-- ============================================================ -->
+<!-- Server-rendered data (consumed by homis.js, not shown to user) -->
+<!-- ============================================================ -->
+
+<!-- All registered usernames, rendered server-side via Jinja so the
+     client-side search doesn't need a network round-trip per keystroke.
+     Kept hidden; JS reads the <li> text contents into an array on load. -->
+<ul id="list" hidden>
+{% for user in users %}
+<li>{{user}}</li>
+{% endfor %}
+</ul>
+
+<!-- The logged-in user's conversation list (partner, last message, etc.),
+     serialized to JSON by Flask's `tojson` filter. A <script type=
+     "application/json"> tag is used instead of a plain JS variable so the
+     data is never accidentally executed - homis.js reads it via
+     JSON.parse(document.getElementById('conversations-data').textContent). -->
+<script id="conversations-data" type="application/json">{{ conversations | tojson }}</script>
+
+<!-- ============================================================ -->
+<!-- Application logic (kept out of this file on purpose, for      -->
+<!-- separation of markup vs. behavior and easier caching/reuse)   -->
+<!-- ============================================================ -->
+<!-- Load order matters: each file depends on globals declared in the
+     one(s) before it (see the header comment in each file). -->
+<script src="/static/scripts/home_core.js"></script>
+<script src="/static/scripts/e2ee.js"></script>
+<script src="/static/scripts/home_profile.js"></script>
+<script src="/static/scripts/home_search_inbox.js"></script>
+<script src="/static/scripts/home_chat.js"></script>
+
+</body>
+
+</html>
