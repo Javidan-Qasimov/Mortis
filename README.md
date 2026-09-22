@@ -1,65 +1,95 @@
-# Homis
+# Mortis
 
-Flask, SQLAlchemy ve Socket.IO ile hazırlanmış gerçek zamanlı bire bir mesajlaşma demosu.
+A real-time one-to-one messaging demo built with Flask, SQLAlchemy, and Socket.IO.
 
-## Uçtan uca şifreleme prototipi
+## End-to-End Encryption Prototype
 
-Yeni mesajlar tarayıcıda Web Crypto API ile ECDH P-256 üzerinden türetilen AES-256-GCM
-anahtarıyla şifrelenir. Flask uygulaması yalnızca genel kimlik anahtarlarını, şifreli mesaj
-zarfını ve mesajlaşma metadatasını (gönderen, alıcı, zaman) görür; özel anahtar veya mesaj
-metnini almaz. Özel anahtar yalnızca kullanıcının o tarayıcısının local storage alanındadır.
+New messages are encrypted in the browser using an AES-256-GCM key derived through ECDH P-256 via the Web Crypto API.
 
-Bu, **Signal Protocol değildir** ve Signal düzeyinde güvenlik iddia etmez. Signal'in resmi
-tasarımı PQXDH/X3DH, ön anahtarlar, Double Ratchet, her mesaj için gelişen anahtarlar,
-çoklu-cihaz oturum yönetimi ve uzun süreli güvenli anahtar saklama içerir. Bu prototipte
-ileri gizlilik, ele geçirilme sonrası iyileşme, çoklu cihaz desteği ve anahtar güvenlik
-numarası doğrulaması yoktur. Gerçek hassas iletişim ürünü için özel kripto tasarlamak yerine
-denetlenmiş bir Signal Protocol istemci kütüphanesi ve bağımsız güvenlik denetimi kullanılmalıdır.
+The Flask application only sees public identity keys, the encrypted message envelope, and messaging metadata (sender, recipient, timestamp). It never receives the private key or the message plaintext.
 
-## Herhangi bir bilgisayarda çalıştırma
+The private key exists only in that user's browser local storage.
 
-Docker Desktop yüklü olan bir bilgisayarda Python veya MySQL kurulumu gerekmez:
+This is **not Signal Protocol** and does not claim Signal-level security. Signal's official design includes PQXDH/X3DH, prekeys, Double Ratchet, continuously evolving message keys, multi-device session management, and long-term secure key storage.
+
+This prototype does not provide forward secrecy, post-compromise recovery, multi-device support, or safety-number verification.
+
+For any real-world sensitive communication product, use a well-audited Signal Protocol client library and obtain independent security audits instead of designing custom cryptography.
+
+## Running on Any Computer
+
+If Docker Desktop is installed, no Python or MySQL installation is required:
 
 ```powershell
 git clone <GITHUB_REPOSITORY_URL>
-cd <PROJE_KLASORU>
+cd <PROJECT_FOLDER>
 Copy-Item .env.example .env
-# .env içindeki SECRET_KEY ve şifreleri güçlü, benzersiz değerlerle değiştirin.
+# Replace SECRET_KEY and passwords in .env with strong, unique values.
 docker compose up --build
 ```
 
-Tarayıcıdan `http://localhost:5000` adresini açın. Uygulama varsayılan olarak yalnızca
-aynı bilgisayardan erişilebilir. Durdurmak için `Ctrl+C`,
-arka planda çalıştırıldıysa `docker compose down` kullanın. Veritabanı verisini de
-silmek isterseniz `docker compose down -v` çalıştırın.
+Open `http://localhost:5000` in your browser.
 
-Adminer yalnızca gerektiğinde açılır:
+By default, the application is accessible only from the same computer.
+
+To stop it, press `Ctrl+C`. If it is running in the background, use:
+
+```powershell
+docker compose down
+```
+
+To remove the database volume as well:
+
+```powershell
+docker compose down -v
+```
+
+Adminer is started only when needed:
 
 ```powershell
 docker compose --profile tools up -d
 ```
 
-Ardından `http://localhost:8080` adresinden erişilir.
+Then access it at:
 
-## İnternetten erişilebilir bağlantı
+`http://localhost:8080`
 
-GitHub yalnızca kaynak kodunu barındırır; canlı bağlantı için sürekli açık bir sunucu gerekir.
-En taşınabilir seçenek, ücretsiz/ücretli bir VPS'e Docker ve Docker Compose kurup bu depoyu
-klonlamak, production `.env` değerlerini ayarlamak, `APP_ENV=production`,
-`FLASK_DEBUG=false`, `SESSION_COOKIE_SECURE=true` kullanmak ve uygulamayı HTTPS sağlayan
-bir ters vekilin (Caddy veya Nginx) arkasında çalıştırmaktır. Bu durumda herkes alan adın
-veya sunucu adresin üzerinden erişebilir; kişisel bilgisayarın açık olmak zorunda kalmaz.
+## Making It Accessible from the Internet
 
-`.env` dosyasını asla GitHub'a göndermeyin. Yalnız `.env.example` paylaşılır.
+GitHub only hosts source code. A publicly accessible application requires a server that remains online.
 
-Geliştirme ortamında `AUTO_CREATE_SCHEMA=true` tabloları otomatik oluşturur. Production'da
-`APP_ENV=production`, `FLASK_DEBUG=false`, `SESSION_COOKIE_SECURE=true` ve
-`AUTO_CREATE_SCHEMA=false` kullanın. HTTPS arkasında production WSGI/ASGI sunucusu çalıştırın;
-Flask'ın geliştirme sunucusunu kullanmayın.
+The most portable approach is to rent a VPS (free or paid), install Docker and Docker Compose, clone this repository, configure production `.env` values, set:
 
-## Şema değişiklikleri
+```text
+APP_ENV=production
+FLASK_DEBUG=false
+SESSION_COOKIE_SECURE=true
+```
 
-Production şema değişikliklerini `create_all()` ile değil Flask-Migrate ile yönetin:
+and run the application behind an HTTPS-enabled reverse proxy such as Caddy or Nginx.
+
+In that setup, anyone can access the application through your domain name or server address, and your personal computer does not need to stay online.
+
+Never commit the `.env` file to GitHub.
+
+Only `.env.example` should be shared.
+
+In development, `AUTO_CREATE_SCHEMA=true` automatically creates database tables.
+
+In production, use:
+
+```text
+APP_ENV=production
+FLASK_DEBUG=false
+SESSION_COOKIE_SECURE=true
+AUTO_CREATE_SCHEMA=false
+```
+
+Run the application behind HTTPS using a production WSGI/ASGI server. Do not use Flask's built-in development server in production.
+
+## Schema Changes
+
+Manage production database schema changes with Flask-Migrate instead of `create_all()`:
 
 ```powershell
 cd backend
@@ -68,13 +98,21 @@ flask --app app db migrate -m "describe change"
 flask --app app db upgrade
 ```
 
-## Test
+## Testing
 
-Proje kökünde `pytest` çalıştırın. Testler SQLite'ın geçici bellekteki veritabanını kullanır.
+Run:
 
-## Güvenlik notları
+```powershell
+pytest
+```
 
-- `.env` Git'e eklenmez; yalnızca `.env.example` paylaşılır.
-- MySQL ve Adminer portları yalnızca localhost'a bağlanır.
-- Formlar CSRF korumalıdır; Socket.IO olaylarında alıcı doğrulaması, mesaj boyut sınırı ve işlem başına hız sınırı vardır.
-- Çok işlemli production dağıtımında Socket.IO için paylaşımlı mesaj kuyruğu ve dağıtık rate-limit deposu (ör. Redis) yapılandırın.
+from the project root.
+
+The test suite uses an in-memory SQLite database.
+
+## Security Notes
+
+* `.env` is excluded from Git; only `.env.example` is shared.
+* MySQL and Adminer ports are bound only to localhost.
+* Forms are protected against CSRF attacks. Socket.IO events include recipient validation, message size limits, and per-operation rate limiting.
+* For multi-process production deployments, configure a shared message queue for Socket.IO and a distributed rate-limit backend (for example, Redis).
