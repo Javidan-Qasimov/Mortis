@@ -9,6 +9,15 @@ Mortis is a real-time, one-to-one messaging demo built with Flask, SQLAlchemy, a
 - Flask backend with MySQL storage
 - Docker Compose setup for running the app locally
 
+## Screenshots
+
+| Login | Join consent |
+|:---:|:---:|
+| <img src="screenshots/login-screen.png" alt="Mortis login screen" width="420"> | <img src="screenshots/join-consent.png" alt="Join consent screen" width="420"> |
+
+| Contacts | Conversation |
+|:---:|:---:|
+| <img src="screenshots/contacts-list.png" alt="Contacts list screen" width="420"> | <img src="screenshots/chat-window.png" alt="One-to-one chat screen" width="420"> |
 ## End-to-End Encryption Prototype
 
 New messages are encrypted in the browser using AES-256-GCM. The encryption key is derived through ECDH P-256 with the Web Crypto API.
@@ -150,3 +159,4 @@ The tests use an in-memory SQLite database.
 - MySQL and Adminer ports are bound to localhost in the Docker Compose configuration.
 - Forms use CSRF protection. Socket.IO events include recipient validation, message size limits, and per-operation rate limiting.
 - Multi-process production deployments should use a shared Socket.IO message queue and a distributed rate-limit backend, such as Redis.
+
