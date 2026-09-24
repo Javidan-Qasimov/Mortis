@@ -1,118 +1,152 @@
 # Mortis
 
-A real-time one-to-one messaging demo built with Flask, SQLAlchemy, and Socket.IO.
+Mortis is a real-time, one-to-one messaging demo built with Flask, SQLAlchemy, and Socket.IO.
+
+## Features
+
+- Real-time one-to-one messaging
+- Browser-based end-to-end encryption prototype
+- Flask backend with MySQL storage
+- Docker Compose setup for running the app locally
 
 ## End-to-End Encryption Prototype
 
-New messages are encrypted in the browser using an AES-256-GCM key derived through ECDH P-256 via the Web Crypto API.
+New messages are encrypted in the browser using AES-256-GCM. The encryption key is derived through ECDH P-256 with the Web Crypto API.
 
-The Flask application only sees public identity keys, the encrypted message envelope, and messaging metadata (sender, recipient, timestamp). It never receives the private key or the message plaintext.
+The Flask application receives public identity keys, encrypted message envelopes, and messaging metadata such as sender, recipient, and timestamp. It does not receive private keys or message plaintext. A user's private key is stored in that user's browser local storage.
 
-The private key exists only in that user's browser local storage.
+**This is not Signal Protocol and does not claim Signal-level security.** Signal's official design includes PQXDH/X3DH, prekeys, Double Ratchet, evolving message keys, multi-device session management, and long-term secure key storage.
 
-This is **not Signal Protocol** and does not claim Signal-level security. Signal's official design includes PQXDH/X3DH, prekeys, Double Ratchet, continuously evolving message keys, multi-device session management, and long-term secure key storage.
+This prototype does not provide forward secrecy, post-compromise recovery, multi-device support, or safety-number verification. For sensitive real-world communications, use a well-audited Signal Protocol client library and obtain independent security audits instead of designing custom cryptography.
 
-This prototype does not provide forward secrecy, post-compromise recovery, multi-device support, or safety-number verification.
+## Requirements
 
-For any real-world sensitive communication product, use a well-audited Signal Protocol client library and obtain independent security audits instead of designing custom cryptography.
+For the recommended setup:
 
-## Running on Any Computer
+- Git
+- Docker Desktop with Docker Compose
 
-If Docker Desktop is installed, no Python or MySQL installation is required:
+You do not need to install Python or MySQL to run the app with Docker.
+
+## Run with Docker
+
+Clone the repository and enter the project folder:
 
 ```powershell
-git clone <GITHUB_REPOSITORY_URL>
-cd <PROJECT_FOLDER>
+git clone https://github.com/Javidan-Qasimov/Mortis.git
+cd Mortis
 Copy-Item .env.example .env
-# Replace SECRET_KEY and passwords in .env with strong, unique values.
+```
+
+Open `.env` and replace the placeholder secret and passwords with strong, unique values. Keep `.env` private and do not commit it to GitHub.
+
+Build and start the app:
+
+```powershell
 docker compose up --build
 ```
 
-Open `http://localhost:5000` in your browser.
+Open [http://localhost:5000](http://localhost:5000) in your browser. The app is bound to localhost and is accessible from your computer only.
 
-By default, the application is accessible only from the same computer.
-
-To stop it, press `Ctrl+C`. If it is running in the background, use:
+To stop the app, press `Ctrl+C`. If you started it in the background, run:
 
 ```powershell
 docker compose down
 ```
 
-To remove the database volume as well:
+To also delete the database volume and its data:
 
 ```powershell
 docker compose down -v
 ```
 
-Adminer is started only when needed:
+### Start Adminer
+
+Adminer is an optional database management tool. Start it with:
 
 ```powershell
 docker compose --profile tools up -d
 ```
 
-Then access it at:
+Then open [http://localhost:8080](http://localhost:8080).
 
-`http://localhost:8080`
+## Run with Python
 
-## Making It Accessible from the Internet
+This option requires Python and a MySQL server to be installed and running.
 
-GitHub only hosts source code. A publicly accessible application requires a server that remains online.
+Create and activate a virtual environment, then install the project dependencies:
 
-The most portable approach is to rent a VPS (free or paid), install Docker and Docker Compose, clone this repository, configure production `.env` values, set:
-
-```text
-APP_ENV=production
-FLASK_DEBUG=false
-SESSION_COOKIE_SECURE=true
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-and run the application behind an HTTPS-enabled reverse proxy such as Caddy or Nginx.
+Copy the example environment file:
 
-In that setup, anyone can access the application through your domain name or server address, and your personal computer does not need to stay online.
+```powershell
+Copy-Item .env.example .env
+```
 
-Never commit the `.env` file to GitHub.
+Edit `.env` and set the database connection values for your local MySQL server. For a MySQL server running on your computer, set:
 
-Only `.env.example` should be shared.
+```ini
+DB_HOST=127.0.0.1
+DB_PORT=3306
+```
 
-In development, `AUTO_CREATE_SCHEMA=true` automatically creates database tables.
+Make sure the MySQL database and user in `.env` exist and that the user has access to the database.
 
-In production, use:
+From the project root, start the app with:
 
-```text
+```powershell
+python app.py
+```
+
+Open [http://localhost:5000](http://localhost:5000). Stop the server with `Ctrl+C`.
+
+## Production Deployment
+
+GitHub hosts the source code; it does not run the application. To make the app available over the internet, deploy it to a server that remains online.
+
+A typical setup uses a VPS running Docker and Docker Compose, with the application behind an HTTPS-enabled reverse proxy such as Caddy or Nginx.
+
+For production, configure secure environment values, including:
+
+```ini
 APP_ENV=production
 FLASK_DEBUG=false
 SESSION_COOKIE_SECURE=true
 AUTO_CREATE_SCHEMA=false
 ```
 
-Run the application behind HTTPS using a production WSGI/ASGI server. Do not use Flask's built-in development server in production.
+Use HTTPS and a production WSGI/ASGI server. Do not expose Flask's built-in development server directly to the internet.
 
-## Schema Changes
+## Database Schema Changes
 
-Manage production database schema changes with Flask-Migrate instead of `create_all()`:
+For the Docker setup, run Flask-Migrate commands inside the web container:
 
 ```powershell
-cd backend
-flask --app app db init
-flask --app app db migrate -m "describe change"
-flask --app app db upgrade
+docker compose exec web flask --app backend.app db init
+docker compose exec web flask --app backend.app db migrate -m "describe change"
+docker compose exec web flask --app backend.app db upgrade
 ```
 
-## Testing
+Use Flask-Migrate for production schema changes instead of relying on `create_all()`.
 
-Run:
+## Tests
+
+Run the test suite from the project root:
 
 ```powershell
 pytest
 ```
 
-from the project root.
-
-The test suite uses an in-memory SQLite database.
+The tests use an in-memory SQLite database.
 
 ## Security Notes
 
-* `.env` is excluded from Git; only `.env.example` is shared.
-* MySQL and Adminer ports are bound only to localhost.
-* Forms are protected against CSRF attacks. Socket.IO events include recipient validation, message size limits, and per-operation rate limiting.
-* For multi-process production deployments, configure a shared message queue for Socket.IO and a distributed rate-limit backend (for example, Redis).
+- `.env` is excluded from Git. Share `.env.example` only.
+- MySQL and Adminer ports are bound to localhost in the Docker Compose configuration.
+- Forms use CSRF protection. Socket.IO events include recipient validation, message size limits, and per-operation rate limiting.
+- Multi-process production deployments should use a shared Socket.IO message queue and a distributed rate-limit backend, such as Redis.
